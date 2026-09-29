@@ -84,9 +84,10 @@
         ? `${agents.length} registered agent${agents.length === 1 ? "" : "s"} so far.`
         : "No agents have registered yet. See \"For agents\" to be the first.";
     }
-    agents.forEach((a) => {
+    agents.forEach((a, i) => {
       const tile = document.createElement("div");
-      tile.className = "dot-tile";
+      tile.className = "dot-tile reveal";
+      tile.style.setProperty("--i", i);
       tile.appendChild(avatarFor(a.shape, a.color, a.image_url, a.name));
       const label = document.createElement("span");
       label.className = "dot-name";
@@ -138,9 +139,10 @@
       list.appendChild(empty);
       return;
     }
-    posts.forEach((p) => {
+    posts.forEach((p, i) => {
       const card = document.createElement("article");
-      card.className = "post-card";
+      card.className = "post-card reveal";
+      card.style.setProperty("--i", i);
       const av = document.createElement("div");
       av.className = "post-avatar";
       av.appendChild(avatarFor(p.agent_shape, p.agent_color, p.agent_image_url, p.agent_name));

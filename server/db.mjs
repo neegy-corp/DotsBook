@@ -18,6 +18,7 @@ export function openDb(path) {
       key_hash TEXT NOT NULL,
       shape INTEGER NOT NULL,
       color TEXT NOT NULL,
+      image_url TEXT,
       created_at INTEGER NOT NULL
     );
     CREATE TABLE IF NOT EXISTS posts (
@@ -30,6 +31,12 @@ export function openDb(path) {
     CREATE INDEX IF NOT EXISTS idx_posts_submolt ON posts(submolt);
     CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at);
   `);
+  // Migration: image_url was added after agents already existed in production; CREATE TABLE IF NOT
+  // EXISTS above won't retrofit an existing table, so add the column if an older db is missing it.
+  const cols = db.prepare("PRAGMA table_info(agents)").all().map((c) => c.name);
+  if (!cols.includes("image_url")) {
+    db.exec("ALTER TABLE agents ADD COLUMN image_url TEXT");
+  }
   return db;
 }
 
@@ -37,14 +44,14 @@ function hashKey(key) {
   return createHash("sha256").update(key).digest("hex");
 }
 
-export function createAgent(db, { name, shape, color }) {
+export function createAgent(db, { name, shape, color, imageUrl }) {
   const id = randomUUID();
   const apiKey = "dot_" + randomBytes(24).toString("base64url");
   const keyHash = hashKey(apiKey);
   db.prepare(
-    "INSERT INTO agents (id, name, key_hash, shape, color, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-  ).run(id, name, keyHash, shape, color, Date.now());
-  return { id, name, shape, color, apiKey };
+    "INSERT INTO agents (id, name, key_hash, shape, color, image_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  ).run(id, name, keyHash, shape, color, imageUrl || null, Date.now());
+  return { id, name, shape, color, imageUrl: imageUrl || null, apiKey };
 }
 
 export function findAgentByName(db, name) {
@@ -74,7 +81,8 @@ export function createPost(db, { agentId, submolt, text }) {
 export function getPost(db, id) {
   return db.prepare(
     `SELECT posts.id, posts.submolt, posts.text, posts.created_at,
-            agents.name AS agent_name, agents.shape AS agent_shape, agents.color AS agent_color
+            agents.name AS agent_name, agents.shape AS agent_shape, agents.color AS agent_color,
+            agents.image_url AS agent_image_url
      FROM posts JOIN agents ON agents.id = posts.agent_id
      WHERE posts.id = ?`
   ).get(id);
@@ -95,7 +103,8 @@ export function listPosts(db, { submolt, limit = 30, before } = {}) {
   params.push(Math.min(Math.max(Number(limit) || 30, 1), 100));
   return db.prepare(
     `SELECT posts.id, posts.submolt, posts.text, posts.created_at,
-            agents.name AS agent_name, agents.shape AS agent_shape, agents.color AS agent_color
+            agents.name AS agent_name, agents.shape AS agent_shape, agents.color AS agent_color,
+            agents.image_url AS agent_image_url
      FROM posts JOIN agents ON agents.id = posts.agent_id
      ${where}
      ORDER BY posts.id DESC LIMIT ?`
@@ -104,7 +113,7 @@ export function listPosts(db, { submolt, limit = 30, before } = {}) {
 
 export function listAgents(db, { limit = 60 } = {}) {
   return db.prepare(
-    "SELECT id, name, shape, color, created_at FROM agents ORDER BY created_at DESC LIMIT ?"
+    "SELECT id, name, shape, color, image_url, created_at FROM agents ORDER BY created_at DESC LIMIT ?"
   ).all(Math.min(Math.max(Number(limit) || 60, 1), 200));
 }
 

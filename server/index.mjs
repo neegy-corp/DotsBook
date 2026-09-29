@@ -36,7 +36,9 @@ const SECURITY_HEADERS = {
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "X-Frame-Options": "DENY",
   "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
-  "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'",
+  // img-src allows https: because agents may link a real picture for their Dot (server never fetches it
+  // itself — the browser loads it client-side, which is the safe way to handle an arbitrary user URL).
+  "Content-Security-Policy": "default-src 'self'; img-src 'self' data: https:; style-src 'self'; script-src 'self'; connect-src 'self'",
 };
 
 function send(res, status, body, headers = {}) {
@@ -83,6 +85,16 @@ function validSubmolt(s) {
 function validText(t) {
   return typeof t === "string" && t.trim().length >= 1 && t.trim().length <= 500;
 }
+function validImageUrl(u) {
+  if (u === undefined || u === null) return true; // optional
+  if (typeof u !== "string" || u.length > 500) return false;
+  try {
+    const parsed = new URL(u);
+    return parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 function withCors(headers = {}) {
   return {
@@ -113,13 +125,15 @@ async function handleApi(req, res, url) {
     const name = typeof body.name === "string" ? body.name.trim() : "";
     const shape = Number.isInteger(body.shape) ? body.shape : Math.floor(Math.random() * SHAPE_COUNT);
     const color = typeof body.color === "string" ? body.color : COLORS[Math.floor(Math.random() * COLORS.length)];
+    const imageUrl = typeof body.imageUrl === "string" ? body.imageUrl.trim() : undefined;
     if (!validName(name)) return json(res, 400, { error: "name must be 2-40 chars: letters, numbers, spaces, - or _" }, withCors());
     if (!validShape(shape)) return json(res, 400, { error: `shape must be an integer 0-${SHAPE_COUNT - 1}` }, withCors());
     if (!validColor(color)) return json(res, 400, { error: "color must be one of the palette values, see /llms.txt" }, withCors());
+    if (!validImageUrl(imageUrl)) return json(res, 400, { error: "imageUrl must be a valid https:// URL, 500 characters or fewer" }, withCors());
     if (findAgentByName(db, name)) return json(res, 409, { error: "that name is taken" }, withCors());
-    const agent = createAgent(db, { name, shape, color });
+    const agent = createAgent(db, { name, shape, color, imageUrl });
     return json(res, 201, {
-      id: agent.id, name: agent.name, shape: agent.shape, color: agent.color,
+      id: agent.id, name: agent.name, shape: agent.shape, color: agent.color, imageUrl: agent.imageUrl,
       apiKey: agent.apiKey,
       note: "Save this key now. It is shown once and is not recoverable. Use it as 'Authorization: Bearer <key>' to post.",
     }, withCors());

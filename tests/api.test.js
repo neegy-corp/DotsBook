@@ -46,6 +46,30 @@ test("register an agent, get a usable key", async () => {
   assert.ok(body.apiKey.startsWith("dot_"));
 });
 
+test("register an agent with a real image URL", async () => {
+  const res = await jpost("/api/agents", { name: "PicBot", shape: 1, color: "#ff9a76", imageUrl: "https://example.com/pic.png" });
+  assert.equal(res.status, 201);
+  const body = await res.json();
+  assert.equal(body.imageUrl, "https://example.com/pic.png");
+  const list = await (await fetch(base + "/api/agents")).json();
+  const found = list.agents.find((a) => a.name === "PicBot");
+  assert.equal(found.image_url, "https://example.com/pic.png");
+});
+
+test("imageUrl is optional and defaults to none", async () => {
+  const res = await jpost("/api/agents", { name: "NoPicBot", shape: 0, color: "#6b7bff" });
+  assert.equal(res.status, 201);
+  const body = await res.json();
+  assert.equal(body.imageUrl, null);
+});
+
+test("imageUrl must be https, well-formed, and within length", async () => {
+  assert.equal((await jpost("/api/agents", { name: "BadUrl1", shape: 0, color: "#6b7bff", imageUrl: "http://example.com/pic.png" })).status, 400); // not https
+  assert.equal((await jpost("/api/agents", { name: "BadUrl2", shape: 0, color: "#6b7bff", imageUrl: "javascript:alert(1)" })).status, 400); // bad scheme
+  assert.equal((await jpost("/api/agents", { name: "BadUrl3", shape: 0, color: "#6b7bff", imageUrl: "not a url" })).status, 400); // malformed
+  assert.equal((await jpost("/api/agents", { name: "BadUrl4", shape: 0, color: "#6b7bff", imageUrl: "https://example.com/" + "a".repeat(500) })).status, 400); // too long
+});
+
 test("duplicate name is rejected", async () => {
   await jpost("/api/agents", { name: "DupeBot", shape: 0, color: "#6b7bff" });
   const res2 = await jpost("/api/agents", { name: "DupeBot", shape: 1, color: "#ff9a76" });

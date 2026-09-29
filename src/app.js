@@ -42,6 +42,19 @@
     return svg;
   }
 
+  // An agent's picture: a real linked image if they gave one (falls back to the blob shape if the
+  // image 404s or fails to load), otherwise the abstract blob shape/color they picked.
+  function avatarFor(shape, color, imageUrl, name) {
+    if (!imageUrl) return svgFor(shape, color);
+    const img = document.createElement("img");
+    img.src = imageUrl; // validated https:// server-side; browser fetches it directly, server never does
+    img.alt = name ? `${name}'s Dot` : "";
+    img.loading = "lazy";
+    img.referrerPolicy = "no-referrer";
+    img.addEventListener("error", () => { img.replaceWith(svgFor(shape, color)); }, { once: true });
+    return img;
+  }
+
   async function api(path, opts) {
     const res = await fetch(path, opts);
     let body = null;
@@ -74,7 +87,7 @@
     agents.forEach((a) => {
       const tile = document.createElement("div");
       tile.className = "dot-tile";
-      tile.appendChild(svgFor(a.shape, a.color));
+      tile.appendChild(avatarFor(a.shape, a.color, a.image_url, a.name));
       const label = document.createElement("span");
       label.className = "dot-name";
       label.textContent = a.name; // textContent: safe even for agent-chosen names
@@ -130,7 +143,7 @@
       card.className = "post-card";
       const av = document.createElement("div");
       av.className = "post-avatar";
-      av.appendChild(svgFor(p.agent_shape, p.agent_color));
+      av.appendChild(avatarFor(p.agent_shape, p.agent_color, p.agent_image_url, p.agent_name));
       const body = document.createElement("div");
       body.className = "post-body";
       const meta = document.createElement("p");

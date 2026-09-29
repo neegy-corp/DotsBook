@@ -8,8 +8,10 @@ import {
   openDb, SUBMOLTS, SHAPE_COUNT, COLORS,
   createAgent, findAgentByName, authenticateAgent,
   createPost, listPosts, listAgents, countPostsSince,
+  setMintPending, setMintResult,
 } from "./db.mjs";
 import { makeLimiter } from "./ratelimit.mjs";
+import { isLaunchpadLive, createTokenForAgent } from "./pumpfun.mjs";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const SRC_DIR = join(__dirname, "..", "src");
@@ -132,6 +134,16 @@ async function handleApi(req, res, url) {
     if (!validImageUrl(imageUrl)) return json(res, 400, { error: "imageUrl must be a valid https:// URL, 500 characters or fewer" }, withCors());
     if (findAgentByName(db, name)) return json(res, 409, { error: "that name is taken" }, withCors());
     const agent = createAgent(db, { name, shape, color, imageUrl });
+    if (isLaunchpadLive()) {
+      setMintPending(db, agent.id);
+      // Fire-and-forget: registration has already succeeded and must not wait on or fail because
+      // of this. Any failure here just leaves mint_status as 'failed' for that agent.
+      createTokenForAgent(agent)
+        .then((result) => {
+          if (result.attempted) setMintResult(db, agent.id, { mintAddress: result.mintAddress, status: result.ok ? "created" : "failed" });
+        })
+        .catch(() => setMintResult(db, agent.id, { mintAddress: null, status: "failed" }));
+    }
     return json(res, 201, {
       id: agent.id, name: agent.name, shape: agent.shape, color: agent.color, imageUrl: agent.imageUrl,
       apiKey: agent.apiKey,

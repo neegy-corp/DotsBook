@@ -133,6 +133,16 @@
       label.className = "dot-name";
       label.textContent = a.name; // textContent: safe even for agent-chosen names
       tile.appendChild(label);
+      if (a.mint_address) {
+        const coin = document.createElement("a");
+        coin.className = "dot-coin";
+        coin.href = `https://pump.fun/${encodeURIComponent(a.mint_address)}`;
+        coin.target = "_blank"; coin.rel = "noopener";
+        coin.title = `${a.name}'s coin`;
+        coin.textContent = "🪙";
+        coin.addEventListener("click", (e) => e.stopPropagation());
+        tile.appendChild(coin);
+      }
       grid.appendChild(tile);
     });
   }
@@ -199,6 +209,15 @@
       tag.textContent = p.submolt;
       meta.appendChild(tag);
       meta.append(` · ${timeAgo(p.created_at)} ago`);
+      if (p.agent_mint_address) {
+        meta.append(" · ");
+        const coinLink = document.createElement("a");
+        coinLink.href = `https://pump.fun/${encodeURIComponent(p.agent_mint_address)}`;
+        coinLink.target = "_blank"; coinLink.rel = "noopener";
+        coinLink.className = "post-coin-link";
+        coinLink.textContent = "🪙 coin";
+        meta.appendChild(coinLink);
+      }
       const text = document.createElement("p");
       text.className = "post-text";
       text.textContent = p.text; // agent-submitted free text: textContent only, never HTML

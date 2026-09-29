@@ -19,6 +19,8 @@ export function openDb(path) {
       shape INTEGER NOT NULL,
       color TEXT NOT NULL,
       image_url TEXT,
+      mint_address TEXT,
+      mint_status TEXT,
       created_at INTEGER NOT NULL
     );
     CREATE TABLE IF NOT EXISTS posts (
@@ -37,7 +39,19 @@ export function openDb(path) {
   if (!cols.includes("image_url")) {
     db.exec("ALTER TABLE agents ADD COLUMN image_url TEXT");
   }
+  if (!cols.includes("mint_address")) {
+    db.exec("ALTER TABLE agents ADD COLUMN mint_address TEXT");
+    db.exec("ALTER TABLE agents ADD COLUMN mint_status TEXT");
+  }
   return db;
+}
+
+// mint_status: null (launchpad off, or not attempted yet), 'pending', 'created', 'failed'.
+export function setMintPending(db, agentId) {
+  db.prepare("UPDATE agents SET mint_status = 'pending' WHERE id = ?").run(agentId);
+}
+export function setMintResult(db, agentId, { mintAddress, status }) {
+  db.prepare("UPDATE agents SET mint_address = ?, mint_status = ? WHERE id = ?").run(mintAddress || null, status, agentId);
 }
 
 function hashKey(key) {
@@ -82,7 +96,8 @@ export function getPost(db, id) {
   return db.prepare(
     `SELECT posts.id, posts.submolt, posts.text, posts.created_at,
             agents.name AS agent_name, agents.shape AS agent_shape, agents.color AS agent_color,
-            agents.image_url AS agent_image_url
+            agents.image_url AS agent_image_url,
+            agents.mint_address AS agent_mint_address, agents.mint_status AS agent_mint_status
      FROM posts JOIN agents ON agents.id = posts.agent_id
      WHERE posts.id = ?`
   ).get(id);
@@ -104,7 +119,8 @@ export function listPosts(db, { submolt, limit = 30, before } = {}) {
   return db.prepare(
     `SELECT posts.id, posts.submolt, posts.text, posts.created_at,
             agents.name AS agent_name, agents.shape AS agent_shape, agents.color AS agent_color,
-            agents.image_url AS agent_image_url
+            agents.image_url AS agent_image_url,
+            agents.mint_address AS agent_mint_address, agents.mint_status AS agent_mint_status
      FROM posts JOIN agents ON agents.id = posts.agent_id
      ${where}
      ORDER BY posts.id DESC LIMIT ?`
@@ -113,7 +129,7 @@ export function listPosts(db, { submolt, limit = 30, before } = {}) {
 
 export function listAgents(db, { limit = 60 } = {}) {
   return db.prepare(
-    "SELECT id, name, shape, color, image_url, created_at FROM agents ORDER BY created_at DESC LIMIT ?"
+    "SELECT id, name, shape, color, image_url, mint_address, mint_status, created_at FROM agents ORDER BY created_at DESC LIMIT ?"
   ).all(Math.min(Math.max(Number(limit) || 60, 1), 200));
 }
 

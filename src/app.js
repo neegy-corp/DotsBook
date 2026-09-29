@@ -15,7 +15,10 @@
     }));
   }
 
-  // Blob shapes as SVG paths (viewBox 0 0 100 100). Index must match the server's SHAPE_COUNT/order.
+  // Dot bodies as SVG paths (viewBox 0 0 100 100). Index must match the server's SHAPE_COUNT/order.
+  // These are characters, not abstract shapes: every body carries a face, drawn in a fixed dark ink
+  // so it reads on any body color.
+  const INK = "#050506";
   const SHAPES = [
     (c) => `<path fill="${c}" d="M50 6c14 0 22 12 22 26 0 10-4 16-10 24-6 9-8 14-12 14s-6-5-12-14c-6-8-10-14-10-24C28 18 36 6 50 6Z"/>`,
     (c) => `<path fill="${c}" d="M30 30c8-10 22-14 34-6 10 7 12 20 4 30-9 11-26 14-38 4-10-8-9-19 0-28Z"/>`,
@@ -34,11 +37,48 @@
     (c) => `<path fill="${c}" d="M50 12a6 6 0 0 1 6 6 6 6 0 0 1 10-2 6 6 0 0 1 4 10 6 6 0 0 1 6 10 6 6 0 0 1-6 8 6 6 0 0 1-2 10 6 6 0 0 1-10 2 6 6 0 0 1-16 0 6 6 0 0 1-10-2 6 6 0 0 1-2-10 6 6 0 0 1-6-8 6 6 0 0 1 6-10 6 6 0 0 1 4-10 6 6 0 0 1 10 2 6 6 0 0 1 6-6Z"/>`,
   ];
 
+  // dot eyes (cx pair), y = vertical center of the eye line; r = eye size
+  function eyesDot(cx1, cx2, y, r = 4) {
+    return `<circle cx="${cx1}" cy="${y}" r="${r}" fill="${INK}"/><circle cx="${cx2}" cy="${y}" r="${r}" fill="${INK}"/>`;
+  }
+  function eyesClosed(cx1, cx2, y, w = 7) {
+    return `<path d="M${cx1 - w / 2} ${y}q${w / 4} 4 ${w / 2} 0" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M${cx2 - w / 2} ${y}q${w / 4} 4 ${w / 2} 0" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+  }
+  function mouthSmile(cx, y, w = 12) {
+    return `<path d="M${cx - w / 2} ${y}q${w / 2} 7 ${w} 0" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+  }
+  function mouthFlat(cx, y, w = 10) {
+    return `<line x1="${cx - w / 2}" y1="${y}" x2="${cx + w / 2}" y2="${y}" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`;
+  }
+  function mouthOpen(cx, y, r = 4) {
+    return `<ellipse cx="${cx}" cy="${y}" rx="${r * 0.75}" ry="${r}" fill="${INK}"/>`;
+  }
+
+  // One face per body, hand-placed to sit inside that body's silhouette. This is what makes them
+  // read as characters instead of colored shapes.
+  const FACES = [
+    () => eyesDot(44, 56, 26, 3.2) + mouthSmile(50, 34, 10), // droplet: face in the wide top
+    () => eyesDot(40, 50, 40) + mouthSmile(45, 50, 9), // kidney: off-center, content
+    () => eyesDot(45, 55, 34, 3.4) + mouthOpen(50, 42, 3.5), // rounded triangle: surprised
+    () => eyesDot(40, 60, 50) + mouthSmile(50, 58, 12), // pill: wide friendly smile
+    () => eyesDot(40, 60, 46) + mouthSmile(50, 56, 14), // circle: classic happy
+    () => eyesClosed(38, 62, 46) + mouthFlat(50, 56, 8), // cluster: sleepy
+    () => eyesDot(38, 62, 44, 3.6) + mouthOpen(50, 54, 3.2), // clover: giggly surprise
+    () => eyesDot(44, 56, 28, 3) + mouthSmile(50, 36, 8), // heart: sweet, small
+    () => eyesDot(42, 58, 44) + mouthFlat(50, 56, 10), // octagon: calm, steady
+    () => eyesDot(43, 57, 46, 3) + mouthOpen(50, 56, 3), // diamond: alert
+    () => eyesClosed(40, 56, 40) + mouthSmile(48, 48, 8), // cloud: dreamy
+    () => eyesDot(40, 60, 46) + mouthSmile(50, 56, 13), // rounded square: friendly
+    () => eyesDot(43, 57, 46, 3.4) + mouthFlat(50, 56, 9), // sharp triangle: determined
+    () => eyesDot(42, 58, 44) + mouthOpen(50, 54, 3.4), // flower: cheerful
+    () => eyesDot(42, 58, 46) + mouthSmile(50, 56, 12), // scalloped circle: content
+  ];
+
   function svgFor(shape, color) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("viewBox", "0 0 100 100");
-    const fn = SHAPES[shape % SHAPES.length];
-    svg.innerHTML = fn(color); // color/shape both come from a fixed server-validated palette, never raw user text
+    const i = shape % SHAPES.length;
+    svg.innerHTML = SHAPES[i](color) + FACES[i](); // color/shape from a fixed server-validated palette, never raw user text
     return svg;
   }
 

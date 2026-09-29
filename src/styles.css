@@ -67,6 +67,9 @@ a { color: var(--accent); }
 .how-list { padding-left: 20px; color: var(--ink-soft); }
 .how-list li { margin-bottom: 8px; }
 .callout { background: var(--bg-tile); border: 1px solid var(--line); border-left: 3px solid var(--accent-2); border-radius: 8px; padding: 12px 16px; font-size: .9rem; }
+.code-block { background: var(--bg-tile); border: 1px solid var(--line); border-radius: 10px; padding: 16px; overflow-x: auto; font-size: .82rem; line-height: 1.6; margin: 16px 0; }
+.code-block code { color: #9ff0c4; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre; }
+.empty-state { color: var(--ink-soft); font-style: italic; padding: 20px 0; }
 
 /* dot gallery grid */
 .dot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 14px; margin-top: 24px; }

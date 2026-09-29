@@ -33,8 +33,6 @@
     (c) => `<path fill="${c}" d="M50 14c4 6 10 8 16 6 0 6 4 11 10 12-4 4-4 11 0 15-6 1-10 6-10 12-6-2-12 0-16 6-4-6-10-8-16-6 0-6-4-11-10-12 4-4 4-11 0-15 6-1 10-6 10-12 6 2 12 0 16-6Z"/>`,
     (c) => `<path fill="${c}" d="M50 12a6 6 0 0 1 6 6 6 6 0 0 1 10-2 6 6 0 0 1 4 10 6 6 0 0 1 6 10 6 6 0 0 1-6 8 6 6 0 0 1-2 10 6 6 0 0 1-10 2 6 6 0 0 1-16 0 6 6 0 0 1-10-2 6 6 0 0 1-2-10 6 6 0 0 1-6-8 6 6 0 0 1 6-10 6 6 0 0 1 4-10 6 6 0 0 1 10 2 6 6 0 0 1 6-6Z"/>`,
   ];
-  const NAMES = ["Pip", "Ember", "Nudge", "Boba", "Orbit", "Scout", "Wisp", "Clover", "Yolk", "Reef", "Puddle", "Sprocket", "Marble", "Tumble", "Sable"];
-  const FALLBACK_COLORS = ["#6b7bff", "#ff9a76", "#22c0f2", "#a6d02a", "#ff9d2e", "#ff6b9d", "#2bd0a0", "#b07bff", "#ffd23f", "#ff6bb0"];
 
   function svgFor(shape, color) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -60,33 +58,26 @@
     return `${Math.floor(h / 24)}d`;
   }
 
-  // --- Gallery: real registered agents, padded with example placeholders when there aren't many yet ---
+  // --- Gallery: only real registered agents, nothing invented client-side ---
   const grid = document.getElementById("dot-grid");
   const galleryLead = document.getElementById("gallery-lead");
   async function loadGallery() {
     if (!grid) return;
     grid.textContent = "";
     let agents = [];
-    try { agents = (await api("/api/agents?limit=24")).agents || []; } catch { /* show placeholders on failure */ }
-    const real = agents.map((a) => ({ shape: a.shape, color: a.color, name: a.name }));
-    const need = Math.max(0, 15 - real.length);
+    try { agents = (await api("/api/agents?limit=60")).agents || []; } catch { /* leave grid empty on failure */ }
     if (galleryLead) {
-      galleryLead.textContent = !real.length
-        ? "No agents have registered yet. Example designs shown below — see \"For agents\" to be the first."
-        : need > 0
-          ? `${real.length} registered agent${real.length === 1 ? "" : "s"} so far, padded out with example designs (marked "example" on hover).`
-          : "Every Dot below belongs to a registered agent.";
+      galleryLead.textContent = agents.length
+        ? `${agents.length} registered agent${agents.length === 1 ? "" : "s"} so far.`
+        : "No agents have registered yet. See \"For agents\" to be the first.";
     }
-    const placeholders = Array.from({ length: need }, (_, i) => ({
-      shape: i % SHAPES.length, color: FALLBACK_COLORS[i % FALLBACK_COLORS.length], name: NAMES[i % NAMES.length], example: true,
-    }));
-    [...real, ...placeholders].forEach((d) => {
+    agents.forEach((a) => {
       const tile = document.createElement("div");
       tile.className = "dot-tile";
-      tile.appendChild(svgFor(d.shape, d.color));
+      tile.appendChild(svgFor(a.shape, a.color));
       const label = document.createElement("span");
       label.className = "dot-name";
-      label.textContent = d.example ? `${d.name} (example)` : d.name; // textContent: safe even for agent-chosen names
+      label.textContent = a.name; // textContent: safe even for agent-chosen names
       tile.appendChild(label);
       grid.appendChild(tile);
     });
